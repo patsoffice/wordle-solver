@@ -48,23 +48,51 @@
         }
     }
 
-    // Keyboard input
+    function getHiddenInput() {
+        return document.getElementById('hidden-input');
+    }
+
+    function focusHiddenInput() {
+        const input = getHiddenInput();
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function addLetter(letter) {
+        const tiles = getInputTiles();
+        const filled = tiles.filter(t => t.textContent.trim() !== '').length;
+        if (filled < 5) {
+            const tile = tiles[filled];
+            tile.textContent = letter.toLowerCase();
+            tile.classList.add('filled');
+            tile.dataset.feedback = 'x';
+            tile.classList.add('grey', 'clickable');
+            updateSubmitButton();
+        }
+    }
+
+    function removeLetter() {
+        const tiles = getInputTiles();
+        const filled = tiles.filter(t => t.textContent.trim() !== '').length;
+        if (filled > 0) {
+            const tile = tiles[filled - 1];
+            tile.textContent = '';
+            tile.classList.remove('filled', 'green', 'yellow', 'grey', 'clickable');
+            tile.dataset.feedback = '';
+        }
+        updateSubmitButton();
+    }
+
+    // Keyboard input (desktop)
     document.addEventListener('keydown', function(e) {
         const row = getInputRow();
         if (!row) return;
 
-        const tiles = getInputTiles();
-        const filled = tiles.filter(t => t.textContent.trim() !== '').length;
-
         if (e.key === 'Backspace') {
             e.preventDefault();
-            if (filled > 0) {
-                const tile = tiles[filled - 1];
-                tile.textContent = '';
-                tile.classList.remove('filled', 'green', 'yellow', 'grey', 'clickable');
-                tile.dataset.feedback = '';
-            }
-            updateSubmitButton();
+            removeLetter();
             return;
         }
 
@@ -77,33 +105,48 @@
             return;
         }
 
-        if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key) && filled < 5) {
-            const tile = tiles[filled];
-            tile.textContent = e.key.toLowerCase();
-            tile.classList.add('filled');
-            // Default to grey feedback
-            tile.dataset.feedback = 'x';
-            tile.classList.add('grey', 'clickable');
-            updateSubmitButton();
+        if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+            addLetter(e.key);
         }
     });
 
-    // Click to cycle feedback colors
+    // Hidden input handler (mobile virtual keyboard)
+    document.addEventListener('input', function(e) {
+        if (e.target.id !== 'hidden-input') return;
+        const val = e.target.value;
+        if (val) {
+            for (const ch of val) {
+                if (/^[a-zA-Z]$/.test(ch)) {
+                    addLetter(ch);
+                }
+            }
+            e.target.value = '';
+        }
+    });
+
+    // Click to cycle feedback colors, or focus hidden input for typing
     document.addEventListener('click', function(e) {
         const tile = e.target.closest('.tile.clickable');
-        if (!tile) return;
+        if (tile) {
+            const current = tile.dataset.feedback || 'x';
+            let next;
+            if (current === 'x') next = 'y';
+            else if (current === 'y') next = 'g';
+            else next = 'x';
 
-        const current = tile.dataset.feedback || 'x';
-        let next;
-        if (current === 'x') next = 'y';
-        else if (current === 'y') next = 'g';
-        else next = 'x';
+            tile.dataset.feedback = next;
+            tile.classList.remove('green', 'yellow', 'grey');
+            if (next === 'g') tile.classList.add('green');
+            else if (next === 'y') tile.classList.add('yellow');
+            else tile.classList.add('grey');
+            return;
+        }
 
-        tile.dataset.feedback = next;
-        tile.classList.remove('green', 'yellow', 'grey');
-        if (next === 'g') tile.classList.add('green');
-        else if (next === 'y') tile.classList.add('yellow');
-        else tile.classList.add('grey');
+        // Tapping an empty tile or the input row itself brings up keyboard
+        const row = getInputRow();
+        if (row && (e.target === row || e.target.closest('#input-row'))) {
+            focusHiddenInput();
+        }
     });
 
     // Submit guess via HTMX

@@ -50,7 +50,7 @@ Top suggestions:
 cargo run --bin web
 ```
 
-Open <http://localhost:3000>. Type letters into the Wordle-style grid, click tiles to cycle feedback colors (grey -> yellow -> green), and submit to get ranked suggestions.
+Open <http://localhost:3000>. Type letters into the Wordle-style grid, click tiles to cycle feedback colors (grey -> yellow -> green), and submit to get ranked suggestions. On mobile, tap the tile row to bring up the keyboard.
 
 The header shows when the word data was last loaded, turning red if the data is more than 12 hours old. Click **Reload Data** to re-fetch word lists from the web without restarting the server.
 

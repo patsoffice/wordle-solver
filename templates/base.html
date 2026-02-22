@@ -85,6 +85,18 @@
         .tile.active { border-color: #878a8c; }
         .tile.clickable { cursor: pointer; }
 
+        #hidden-input {
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            border: none;
+            outline: none;
+            padding: 0;
+            margin: 0;
+            pointer-events: none;
+        }
+
         .controls {
             display: flex;
             gap: 10px;
