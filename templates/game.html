@@ -85,10 +85,11 @@
         updateSubmitButton();
     }
 
-    // Keyboard input (desktop)
+    // Keyboard input (desktop — skip when hidden input is focused to avoid doubles)
     document.addEventListener('keydown', function(e) {
         const row = getInputRow();
         if (!row) return;
+        if (e.target.id === 'hidden-input') return;
 
         if (e.key === 'Backspace') {
             e.preventDefault();
@@ -110,17 +111,32 @@
         }
     });
 
-    // Hidden input handler (mobile virtual keyboard)
+    // Hidden input handler (mobile virtual keyboard + desktop when input focused)
     document.addEventListener('input', function(e) {
         if (e.target.id !== 'hidden-input') return;
-        const val = e.target.value;
+        var val = e.target.value;
+        e.target.value = '';
         if (val) {
-            for (const ch of val) {
-                if (/^[a-zA-Z]$/.test(ch)) {
-                    addLetter(ch);
+            for (var i = 0; i < val.length; i++) {
+                if (/^[a-zA-Z]$/.test(val[i])) {
+                    addLetter(val[i]);
                 }
             }
-            e.target.value = '';
+        }
+    });
+
+    // Handle backspace/enter from hidden input
+    document.addEventListener('keydown', function(e) {
+        if (e.target.id !== 'hidden-input') return;
+        if (e.key === 'Backspace') {
+            e.preventDefault();
+            removeLetter();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            var btn = document.getElementById('submit-btn');
+            if (btn && !btn.disabled) {
+                btn.click();
+            }
         }
     });
 

@@ -87,15 +87,17 @@
         .tile.clickable { cursor: pointer; }
 
         #hidden-input {
-            position: absolute;
-            opacity: 0;
+            position: fixed;
+            top: -100px;
+            left: -100px;
             width: 1px;
             height: 1px;
+            opacity: 0;
             border: none;
             outline: none;
             padding: 0;
             margin: 0;
-            pointer-events: none;
+            caret-color: transparent;
         }
 
         .controls {
