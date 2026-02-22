@@ -1,0 +1,6 @@
+{% if success %}
+<span class="reload-msg reload-success">{{ message }}</span>
+<script>setTimeout(function() { window.location.reload(); }, 1500);</script>
+{% else %}
+<span class="reload-msg reload-error">{{ message }}</span>
+{% endif %}

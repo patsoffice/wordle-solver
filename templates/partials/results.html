@@ -1,0 +1,35 @@
+<div class="grid">
+    {% for row in grid_rows %}
+    <div class="grid-row">
+        {% for tile in row %}
+        <div class="tile {{ tile.class }}">{{ tile.letter }}</div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+
+    {% if solved %}
+    <div class="message solved">Solved in {{ guess_count }} guess{% if guess_count != 1 %}es{% endif %}!</div>
+    {% else if no_matches %}
+    <div class="message warning">No words match. Check your feedback and try again.</div>
+    {% else if guess_count < 6 %}
+    <div class="grid-row" id="input-row">
+        <div class="tile" data-feedback=""></div>
+        <div class="tile" data-feedback=""></div>
+        <div class="tile" data-feedback=""></div>
+        <div class="tile" data-feedback=""></div>
+        <div class="tile" data-feedback=""></div>
+    </div>
+    {% endif %}
+</div>
+
+{% if !solved && guess_count < 6 && !no_matches %}
+<div class="controls">
+    <button id="submit-btn" class="btn-submit" disabled>Submit</button>
+    <button id="reset-btn" class="btn-reset">New Game</button>
+</div>
+<p class="hint">Type a word, then click tiles to set colors (grey → yellow → green). Press Enter to submit.</p>
+{% else %}
+<div class="controls">
+    <button id="reset-btn" class="btn-reset">New Game</button>
+</div>
+{% endif %}

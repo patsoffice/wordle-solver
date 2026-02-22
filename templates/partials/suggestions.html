@@ -1,0 +1,30 @@
+<h2>Suggestions</h2>
+
+<div class="info">{{ candidate_count }} candidate{% if candidate_count != 1 %}s{% endif %} remaining</div>
+
+{% if has_constraints %}
+<div class="constraints">
+    {% if has_green %}
+    <div>Pattern: <span class="green-text">{{ green_display }}</span></div>
+    {% endif %}
+    {% if !required_display.is_empty() %}
+    <div>Required: <span class="yellow-text">{{ required_display }}</span></div>
+    {% endif %}
+    {% if !excluded_display.is_empty() %}
+    <div>Excluded: <span>{{ excluded_display }}</span></div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if candidate_count == 1 && !suggestions.is_empty() %}
+<div class="message solved">The answer is: <span class="word-text">{{ suggestions[0].word }}</span></div>
+{% else %}
+<ul class="suggestion-list">
+    {% for s in suggestions %}
+    <li>
+        <span class="word-text">{{ s.word }}</span>
+        <span class="score-text">{{ s.score }}</span>
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}

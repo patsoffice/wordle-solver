@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block data_stale_class %}{% if data_stale %} stale{% endif %}{% endblock %}
+{% block data_loaded_at %}{{ data_loaded_at }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="game-area">
+        <div class="grid-section">
+            <div id="game-content">
+                {% include "partials/results.html" %}
+            </div>
+        </div>
+
+        <div class="suggestions-section">
+            <div id="suggestions-content">
+                {% include "partials/suggestions.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const MAX_GUESSES = 6;
+
+    function getInputRow() {
+        return document.getElementById('input-row');
+    }
+
+    function getInputTiles() {
+        const row = getInputRow();
+        return row ? Array.from(row.querySelectorAll('.tile')) : [];
+    }
+
+    function getCurrentWord() {
+        return getInputTiles().map(t => t.textContent.trim()).join('');
+    }
+
+    function getFeedback() {
+        return getInputTiles().map(t => t.dataset.feedback || 'x').join('');
+    }
+
+    function updateSubmitButton() {
+        const btn = document.getElementById('submit-btn');
+        if (btn) {
+            btn.disabled = getCurrentWord().length !== 5;
+        }
+    }
+
+    // Keyboard input
+    document.addEventListener('keydown', function(e) {
+        const row = getInputRow();
+        if (!row) return;
+
+        const tiles = getInputTiles();
+        const filled = tiles.filter(t => t.textContent.trim() !== '').length;
+
+        if (e.key === 'Backspace') {
+            e.preventDefault();
+            if (filled > 0) {
+                const tile = tiles[filled - 1];
+                tile.textContent = '';
+                tile.classList.remove('filled', 'green', 'yellow', 'grey', 'clickable');
+                tile.dataset.feedback = '';
+            }
+            updateSubmitButton();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            if (btn && !btn.disabled) {
+                btn.click();
+            }
+            return;
+        }
+
+        if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key) && filled < 5) {
+            const tile = tiles[filled];
+            tile.textContent = e.key.toLowerCase();
+            tile.classList.add('filled');
+            // Default to grey feedback
+            tile.dataset.feedback = 'x';
+            tile.classList.add('grey', 'clickable');
+            updateSubmitButton();
+        }
+    });
+
+    // Click to cycle feedback colors
+    document.addEventListener('click', function(e) {
+        const tile = e.target.closest('.tile.clickable');
+        if (!tile) return;
+
+        const current = tile.dataset.feedback || 'x';
+        let next;
+        if (current === 'x') next = 'y';
+        else if (current === 'y') next = 'g';
+        else next = 'x';
+
+        tile.dataset.feedback = next;
+        tile.classList.remove('green', 'yellow', 'grey');
+        if (next === 'g') tile.classList.add('green');
+        else if (next === 'y') tile.classList.add('yellow');
+        else tile.classList.add('grey');
+    });
+
+    // Submit guess via HTMX
+    document.addEventListener('click', function(e) {
+        if (e.target.id !== 'submit-btn') return;
+        e.preventDefault();
+
+        const word = getCurrentWord();
+        const feedback = getFeedback();
+
+        if (word.length !== 5) return;
+
+        // Use HTMX to POST
+        htmx.ajax('POST', '/guess', {
+            target: '#game-content',
+            swap: 'innerHTML',
+            values: { guess: word, feedback: feedback }
+        }).then(function() {
+            // After swap, also update suggestions
+            htmx.ajax('POST', '/suggestions', {
+                target: '#suggestions-content',
+                swap: 'innerHTML',
+                values: { guess: word, feedback: feedback }
+            });
+        });
+    });
+
+    // Reset game
+    document.addEventListener('click', function(e) {
+        if (e.target.id !== 'reset-btn') return;
+        e.preventDefault();
+
+        htmx.ajax('POST', '/reset', {
+            target: '#game-content',
+            swap: 'innerHTML'
+        }).then(function() {
+            htmx.ajax('POST', '/reset-suggestions', {
+                target: '#suggestions-content',
+                swap: 'innerHTML'
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}

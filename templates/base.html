@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Solver</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: #121213;
+            color: #d7dadc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            max-width: 500px;
+            border-bottom: 1px solid #3a3a3c;
+            padding: 16px 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .grid-section { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .grid-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .tile {
+            width: 58px;
+            height: 58px;
+            border: 2px solid #3a3a3c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            text-transform: uppercase;
+            user-select: none;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+
+        .tile.filled { border-color: #565758; }
+        .tile.green  { background: #538d4e; border-color: #538d4e; color: #fff; }
+        .tile.yellow { background: #b59f3b; border-color: #b59f3b; color: #fff; }
+        .tile.grey   { background: #3a3a3c; border-color: #3a3a3c; color: #fff; }
+        .tile.active { border-color: #878a8c; }
+        .tile.clickable { cursor: pointer; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        button {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        button:hover { opacity: 0.85; }
+
+        .btn-submit {
+            background: #538d4e;
+            color: #fff;
+        }
+
+        .btn-submit:disabled {
+            background: #3a3a3c;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-reset {
+            background: #3a3a3c;
+            color: #d7dadc;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #818384;
+            text-align: center;
+        }
+
+        .suggestions-section {
+            min-width: 280px;
+        }
+
+        .suggestions-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            color: #818384;
+        }
+
+        .info {
+            font-size: 13px;
+            color: #818384;
+            margin-bottom: 8px;
+        }
+
+        .constraints {
+            font-size: 13px;
+            color: #818384;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        .constraints span { color: #d7dadc; font-weight: 600; }
+        .constraints .green-text { color: #538d4e; }
+        .constraints .yellow-text { color: #b59f3b; }
+
+        .suggestion-list {
+            list-style: none;
+        }
+
+        .suggestion-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 15px;
+            font-family: monospace;
+        }
+
+        .suggestion-list li:nth-child(odd) { background: rgba(255,255,255,0.03); }
+        .suggestion-list li:first-child { background: rgba(83,141,78,0.2); }
+
+        .word-text { text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+        .score-text { color: #818384; }
+
+        .message {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .message.solved { background: rgba(83,141,78,0.2); color: #538d4e; }
+        .message.warning { background: rgba(181,159,59,0.2); color: #b59f3b; }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn-reload {
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid #3a3a3c;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+            color: #818384;
+            transition: border-color 0.15s, color 0.15s;
+        }
+
+        .btn-reload:hover { border-color: #818384; color: #d7dadc; }
+
+        .btn-reload.htmx-request {
+            opacity: 0.5;
+            cursor: wait;
+        }
+
+        .reload-msg {
+            font-size: 12px;
+            transition: opacity 0.3s;
+        }
+
+        .reload-success { color: #538d4e; }
+        .reload-error { color: #b59f3b; }
+
+        .data-freshness {
+            font-size: 11px;
+            color: #565758;
+        }
+
+        .data-freshness.stale {
+            color: #e04040;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Wordle Solver</h1>
+        <div class="toolbar">
+            <span class="data-freshness{% block data_stale_class %}{% endblock %}">Data loaded: {% block data_loaded_at %}{% endblock %}</span>
+            <button class="btn-reload"
+                    hx-post="/reload"
+                    hx-target="#reload-status"
+                    hx-swap="innerHTML"
+                    hx-confirm="Reload word data from the web? This will reset all active games.">
+                Reload Data
+            </button>
+            <span id="reload-status"></span>
+        </div>
+    </header>
+    {% block content %}{% endblock %}
+</body>
+</html>
