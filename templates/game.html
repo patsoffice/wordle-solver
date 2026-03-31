@@ -60,6 +60,19 @@
         }
     }
 
+    function lookupPriorFeedback(letter, positionIndex) {
+        const rows = Array.from(document.querySelectorAll('.grid-row:not(#input-row)'));
+        for (let i = rows.length - 1; i >= 0; i--) {
+            const tile = rows[i].querySelectorAll('.tile')[positionIndex];
+            if (tile && tile.textContent.trim() === letter.toLowerCase()) {
+                if (tile.classList.contains('green')) return 'g';
+                if (tile.classList.contains('yellow')) return 'y';
+                if (tile.classList.contains('grey')) return 'x';
+            }
+        }
+        return null;
+    }
+
     function addLetter(letter) {
         const tiles = getInputTiles();
         const filled = tiles.filter(t => t.textContent.trim() !== '').length;
@@ -67,8 +80,10 @@
             const tile = tiles[filled];
             tile.textContent = letter.toLowerCase();
             tile.classList.add('filled');
-            tile.dataset.feedback = 'x';
-            tile.classList.add('grey', 'clickable');
+            const fb = lookupPriorFeedback(letter, filled) || 'x';
+            tile.dataset.feedback = fb;
+            const colorClass = fb === 'g' ? 'green' : fb === 'y' ? 'yellow' : 'grey';
+            tile.classList.add(colorClass, 'clickable');
             updateSubmitButton();
         }
     }
