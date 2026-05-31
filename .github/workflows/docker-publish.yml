@@ -9,6 +9,7 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'Dockerfile'
+      - '.github/workflows/docker-publish.yml'
 
 env:
   REGISTRY: ghcr.io
@@ -35,12 +36,15 @@ jobs:
       - name: Create git tag if new version
         run: |
           tag="v${{ steps.cargo.outputs.version }}"
-          if ! git rev-parse "$tag" >/dev/null 2>&1; then
+          # Check the remote, not local refs: actions/checkout doesn't fetch
+          # tags, so `git rev-parse` would always miss and the push below would
+          # be rejected for an already-existing tag, failing the job.
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists on remote, skipping"
+          else
             git tag "$tag"
             git push origin "$tag"
             echo "Created tag $tag"
-          else
-            echo "Tag $tag already exists, skipping"
           fi
 
       - name: Set up Docker Buildx
