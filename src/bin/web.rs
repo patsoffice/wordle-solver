@@ -20,6 +20,7 @@ use wordle_word::*;
 
 struct WordData {
     available_words: Vec<String>,
+    used_words: Vec<String>,
     commonality: HashMap<String, f64>,
     loaded_at: SystemTime,
 }
@@ -113,6 +114,7 @@ fn load_word_data() -> WordData {
             eprintln!("{}", e);
             return WordData {
                 available_words: Vec::new(),
+                used_words: Vec::new(),
                 commonality: HashMap::new(),
                 loaded_at: SystemTime::now(),
             };
@@ -137,6 +139,7 @@ fn load_word_data() -> WordData {
 
     WordData {
         available_words,
+        used_words: used.into_iter().collect(),
         commonality: freq_data.commonality,
         loaded_at: SystemTime::now(),
     }
@@ -173,6 +176,21 @@ fn build_grid_rows(guesses: &[(String, String)]) -> Vec<Vec<TileData>> {
         .collect()
 }
 
+/// Top past answers (already-used words) that satisfy the current constraints.
+fn used_matches(
+    used_words: &[String],
+    state: &GameState,
+    commonality: &HashMap<String, f64>,
+) -> Vec<(String, f64)> {
+    let matching: Vec<String> = used_words
+        .iter()
+        .filter(|w| state.matches(w))
+        .cloned()
+        .collect();
+    let ranked = rank_words_owned(&matching, commonality);
+    ranked.into_iter().take(20).collect()
+}
+
 fn build_suggestions(ranked: &[(String, f64)]) -> Vec<SuggestionEntry> {
     ranked
         .iter()
@@ -193,6 +211,7 @@ struct GameTemplate {
     solved: bool,
     no_matches: bool,
     suggestions: Vec<SuggestionEntry>,
+    used_suggestions: Vec<SuggestionEntry>,
     candidate_count: usize,
     has_constraints: bool,
     has_green: bool,
@@ -216,6 +235,7 @@ struct ResultsTemplate {
 #[template(path = "partials/suggestions.html")]
 struct SuggestionsTemplate {
     suggestions: Vec<SuggestionEntry>,
+    used_suggestions: Vec<SuggestionEntry>,
     candidate_count: usize,
     has_constraints: bool,
     has_green: bool,
@@ -265,6 +285,7 @@ async fn index(State(state): State<SharedState>, headers: HeaderMap) -> Response
         required_disp,
         excluded_disp,
         ranked,
+        used_ranked,
         loaded_at,
         data_stale,
     ) = {
@@ -282,6 +303,11 @@ async fn index(State(state): State<SharedState>, headers: HeaderMap) -> Response
         let session = sessions.get(&sid).unwrap();
         let ranked = rank_words_owned(&session.candidates, &word_data.commonality);
         let top: Vec<(String, f64)> = ranked.into_iter().take(15).collect();
+        let used_top = used_matches(
+            &word_data.used_words,
+            &session.state,
+            &word_data.commonality,
+        );
 
         let stale = SystemTime::now()
             .duration_since(word_data.loaded_at)
@@ -297,6 +323,7 @@ async fn index(State(state): State<SharedState>, headers: HeaderMap) -> Response
             session.state.required_display(),
             session.state.excluded_display(),
             top,
+            used_top,
             format_timestamp(word_data.loaded_at),
             stale,
         )
@@ -311,6 +338,7 @@ async fn index(State(state): State<SharedState>, headers: HeaderMap) -> Response
         solved: false,
         no_matches: false,
         suggestions: build_suggestions(&ranked),
+        used_suggestions: build_suggestions(&used_ranked),
         candidate_count: candidates_len,
         has_constraints,
         has_green,
@@ -379,22 +407,35 @@ async fn submit_suggestions(
 ) -> Response {
     let session_id = get_session_id(&headers).unwrap_or_default();
 
-    let (ranked, candidates_len, green_disp, required_disp, excluded_disp) = {
+    let (ranked, used_ranked, candidates_len, green_disp, required_disp, excluded_disp) = {
         let word_data = state.word_data.read().unwrap();
         let sessions = state.sessions.read().unwrap();
         match sessions.get(&session_id) {
             Some(session) => {
                 let ranked = rank_words_owned(&session.candidates, &word_data.commonality);
                 let top: Vec<(String, f64)> = ranked.into_iter().take(15).collect();
+                let used_top = used_matches(
+                    &word_data.used_words,
+                    &session.state,
+                    &word_data.commonality,
+                );
                 (
                     top,
+                    used_top,
                     session.candidates.len(),
                     session.state.green_display(),
                     session.state.required_display(),
                     session.state.excluded_display(),
                 )
             }
-            None => (Vec::new(), 0, String::new(), String::new(), String::new()),
+            None => (
+                Vec::new(),
+                Vec::new(),
+                0,
+                String::new(),
+                String::new(),
+                String::new(),
+            ),
         }
     };
 
@@ -403,6 +444,7 @@ async fn submit_suggestions(
 
     SuggestionsTemplate {
         suggestions: build_suggestions(&ranked),
+        used_suggestions: build_suggestions(&used_ranked),
         candidate_count: candidates_len,
         has_constraints,
         has_green,
@@ -449,6 +491,7 @@ async fn reset_suggestions(State(state): State<SharedState>, headers: HeaderMap)
 
     SuggestionsTemplate {
         suggestions: build_suggestions(&ranked),
+        used_suggestions: Vec::new(),
         candidate_count: candidates_len,
         has_constraints: false,
         has_green: false,

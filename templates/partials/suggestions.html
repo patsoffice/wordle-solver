@@ -28,3 +28,16 @@
     {% endfor %}
 </ul>
 {% endif %}
+
+{% if has_constraints && !used_suggestions.is_empty() %}
+<h3 class="used-heading">Past answers that fit</h3>
+<div class="info">Already used by Wordle &mdash; excluded from suggestions above</div>
+<ul class="suggestion-list used-list">
+    {% for s in used_suggestions %}
+    <li>
+        <span class="word-text">{{ s.word }}</span>
+        <span class="score-text">{{ s.score }}</span>
+    </li>
+    {% endfor %}
+</ul>
+{% endif %}

@@ -192,6 +192,17 @@
         .word-text { text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
         .score-text { color: #818384; }
 
+        .used-heading {
+            font-size: 15px;
+            margin: 20px 0 4px;
+            color: #818384;
+        }
+
+        /* Past-answer list is informational only — mute it and drop the
+           green "first guess" highlight so it isn't mistaken for a suggestion. */
+        .used-list .word-text { color: #818384; font-weight: 500; }
+        .used-list li:first-child { background: rgba(255,255,255,0.03); }
+
         .message {
             font-size: 18px;
             font-weight: 700;
